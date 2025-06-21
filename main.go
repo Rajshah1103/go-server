@@ -30,12 +30,30 @@ func handleConnection(conn net.Conn) {
 	// log the request
 	fmt.Printf("📩 Received %s request for %s\n", method, path)
 
-	// read and discard headers
+	// read and log headers
+	headers := make(map[string]string)
 	for {
 		line, err := reader.ReadString('\n')
-		if err != nil || line == "\r\n" {
+		if err != nil {
 			break
 		}
+		line = strings.TrimSpace(line)
+		if line == "" {
+			break // end of headers
+		}
+		fmt.Println(line)
+
+		colonIndex := strings.Index(line, ":")
+		if colonIndex != -1 {
+			key := strings.TrimSpace(line[:colonIndex])
+			value := strings.TrimSpace(line[colonIndex+1:])
+			headers[key] = value
+		}
+	}
+
+	fmt.Println("🧠 Parsed Headers:")
+	for k, v := range headers {
+		fmt.Printf("  %s: %s\n", k, v)
 	}
 
 	// routing logic
