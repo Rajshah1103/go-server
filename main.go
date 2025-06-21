@@ -16,66 +16,89 @@ func handleConnection(conn net.Conn) {
 	// read the request line
 	requestLine, err := reader.ReadString('\n')
 	if err != nil {
-		fmt.Println("Error reading request: ", err)
+		fmt.Println("Error reading request:", err)
 		return
 	}
+
+	// parse request line
 	method, path, _ := parseRequestLine(requestLine)
+	if method == "" || path == "" {
+		conn.Write([]byte(buildHTTPResponse("400 Bad Request", 400)))
+		return
+	}
 
 	// log the request
-	fmt.Printf("Received %s request for %s\n", method, path)
+	fmt.Printf("📩 Received %s request for %s\n", method, path)
 
-	// build response
+	// read and discard headers
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil || line == "\r\n" {
+			break
+		}
+	}
+
+	// routing logic
 	var response string
-	if path == "/" {
-		response = buildHTTPResponse("Welcome to Raj's HTTP Server")
-	} else {
+	switch {
+	case method == "GET" && path == "/":
+		response = buildHTTPResponse("Welcome to Raj's HTTP Server 🚀")
+	case method == "GET" && path == "/hello":
+		response = buildHTTPResponse("Hello, Raj! 👋")
+	case method == "GET" && path == "/healthz":
+		response = buildHTTPResponse("OK ✅")
+	default:
 		response = buildHTTPResponse("404 Not Found", 404)
 	}
 
 	conn.Write([]byte(response))
-
 }
 
 func parseRequestLine(line string) (method, path, version string) {
-	parts := strings.Split(strings.TrimSpace(line), " ")
+	parts := strings.Fields(strings.TrimSpace(line))
 	if len(parts) >= 3 {
 		return parts[0], parts[1], parts[2]
 	}
 	return "", "", ""
 }
 
-// function to build http response
-
+// function to build HTTP response
 func buildHTTPResponse(body string, statusCode ...int) string {
 	code := 200
 	statusText := "OK"
-	if len(statusCode) > 0 && statusCode[0] == 404 {
-		code = 404
-		statusText = "Not Found"
+
+	if len(statusCode) > 0 {
+		if statusCode[0] == 404 {
+			code = 404
+			statusText = "Not Found"
+		} else if statusCode[0] == 400 {
+			code = 400
+			statusText = "Bad Request"
+		}
 	}
+
 	return fmt.Sprintf(
-		"HTTP/1.1 %d %s\r\nContent-Length: %d\r\nContent-Type: text/plain\r\n\r\n%s",
+		"HTTP/1.1 %d %s\r\nContent-Length: %d\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n%s",
 		code, statusText, len(body), body)
 }
 
 // main function
-
 func main() {
 	listener, err := net.Listen("tcp", ":8080")
 	if err != nil {
-		fmt.Println("Error starting the server: ", err)
+		fmt.Println("Error starting the server:", err)
 		return
 	}
 	defer listener.Close()
 
-	fmt.Println("Server is listening on port 8080...")
+	fmt.Println("🚀 Server is listening on port 8080...")
 
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			fmt.Println("Error accepting connections: ", err)
+			fmt.Println("Error accepting connection:", err)
+			continue
 		}
-		// concurrent handling
 		go handleConnection(conn)
 	}
 }
