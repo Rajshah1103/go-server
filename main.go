@@ -3,9 +3,11 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"github.com/Rajshah1103/go-server/router"
-    "github.com/Rajshah1103/go-server/utils"
 	"net"
+
+	"github.com/Rajshah1103/go-server/handler"
+	"github.com/Rajshah1103/go-server/router"
+	"github.com/Rajshah1103/go-server/utils"
 )
 
 func handleConnection(conn net.Conn) {
@@ -32,6 +34,13 @@ func handleConnection(conn net.Conn) {
 	}
 }
 
+func LoggerMiddleware(next router.HandlerFunc) router.HandlerFunc {
+	return func(conn net.Conn, method, path string, headers map[string]string) {
+		fmt.Printf("📝 %s %s\n", method, path)
+		next(conn, method, path, headers)
+	}
+}
+
 func main() {
 	listener, err := net.Listen("tcp", ":8080")
 	if err != nil {
@@ -41,6 +50,10 @@ func main() {
 	defer listener.Close()
 
 	fmt.Println("🚀 Server listening on port 8080...")
+	router.Register("/", handler.Index)
+	router.Register("/hello", handler.Hello)
+	router.Register("/healthz", handler.Health)
+	router.Use(LoggerMiddleware)
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
